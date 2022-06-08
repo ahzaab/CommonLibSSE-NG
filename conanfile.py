@@ -5,7 +5,7 @@ from conan.tools.cmake import CMake, cmake_layout, CMakeDeps, CMakeToolchain
 from conans import ConanFile
 from conans.errors import ConanInvalidConfiguration
 from conans.tools import Version
-from os import mkdir, path, remove
+from os import path, remove
 
 
 required_conan_version = ">=1.48.0"
@@ -19,17 +19,17 @@ class CommonLibSSE(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     options = {
         "testing": [True, False],
-        "ae": [True, False],
-        "se": [True, False],
-        "vr": [True, False],
-        "xbyak": [True, False]
+        "with_ae": [True, False],
+        "with_se": [True, False],
+        "with_vr": [True, False],
+        "with_xbyak": [True, False]
     }
     default_options = {
         "testing": False,
-        "ae": True,
-        "se": True,
-        "vr": True,
-        "xbyak": False,
+        "with_ae": True,
+        "with_se": True,
+        "with_vr": True,
+        "with_xbyak": False,
         "fmt:header_only": True,
         "spdlog:header_only": True
     }
@@ -44,7 +44,7 @@ class CommonLibSSE(ConanFile):
         self.requires("spdlog/1.10.0")
 
     def layout(self):
-        cmake_layout(self)
+        cmake_layout(self, generator="Ninja")
 
     def generate(self):
         deps = CMakeDeps(self)
@@ -68,15 +68,28 @@ class CommonLibSSE(ConanFile):
             raise ConanInvalidConfiguration("x86_64 is the only supported architecture")
 
     def build(self):
-        defs = {"ENABLE_SKYRIM_AE": "ON" if self.options.ae else "OFF",
-                "ENABLE_SKYRIM_SE": "ON" if self.options.se else "OFF",
-                "ENABLE_SKYRIM_VR": "ON" if self.options.vr else "OFF",
+        defs = {"ENABLE_SKYRIM_AE": "ON" if self.options.with_ae else "OFF",
+                "ENABLE_SKYRIM_SE": "ON" if self.options.with_se else "OFF",
+                "ENABLE_SKYRIM_VR": "ON" if self.options.with_vr else "OFF",
                 "BUILD_TESTS": "ON" if self.options.testing else "OFF",
-                "SKSE_SUPPORT_XBYAK": "ON" if self.options.xbyak else "OFF"}
+                "SKSE_SUPPORT_XBYAK": "ON" if self.options.with_xbyak else "OFF"}
         def_args = " ".join(['-D{}="{}"'.format(k, v) for k, v in defs.items()])
         build_type = str(self.settings.build_type).lower()
-        self.run(f"cmake --preset=build-{build_type}-msvc-conan-all {def_args}", cwd=self.source_folder)
-        self.run(f"cmake --build --preset={build_type}-msvc-conan-all", cwd=self.source_folder)
+
+        if self.options.with_ae:
+            if self.options.with_se:
+                runtimes = "all" if self.options.with_vr else "flatrim"
+            else:
+                runtimes = "current" if self.options.with_vr else "ae"
+        elif self.options.with_se:
+            runtimes = "pre-ae" if self.options.with_vr else "se"
+        elif self.options.with_vr:
+            runtimes = "vr"
+        else:
+            raise ConanInvalidConfiguration("At least one Skyrim runtime must be enabled")
+
+        self.run(f"cmake --preset=build-{build_type}-msvc-conan-{runtimes} {def_args}", cwd=self.source_folder)
+        self.run(f"cmake --build --preset={build_type}-msvc-conan-{runtimes}", cwd=self.source_folder)
 
     def package(self):
         build_type = str(self.settings.build_type).lower()

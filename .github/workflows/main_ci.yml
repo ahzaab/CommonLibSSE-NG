@@ -66,6 +66,41 @@ jobs:
         run: .\CommonLibSSETests.exe
   build-and-test-conan:
     runs-on: windows-latest
+    env:
+      BUILD_CONTEXT: |
+        {
+          "build": {
+            "debug": "Debug",
+            "release": "Release"
+          },
+          "runtime": {
+            "all": {
+              "ae": "True",
+              "se": "True",
+              "vr": "True"
+            },
+            "flatrim": {
+              "ae": "True",
+              "se": "True",
+              "vr": "False"
+            },
+            "ae": {
+              "ae": "True",
+              "se": "False",
+              "vr": "False"
+            },
+            "se": {
+              "ae": "False",
+              "se": "True",
+              "vr": "False"
+            },
+            "vr": {
+              "ae": "False",
+              "se": "False",
+              "vr": "True"
+            }
+          }
+        }
     strategy:
       fail-fast: false
       matrix:
@@ -95,7 +130,7 @@ jobs:
 
       - name: Run Conan
         working-directory: ${{ github.workspace }}/main
-        run: conan install --build=missing -o commonlibsse-ng:testing=True .
+        run: conan install --build=missing -s build_type=${{ fromJSON(env.BUILD_CONTEXT).build[matrix.build-type] }} -o commonlibsse-ng:testing=True -o commonlibsse-ng:with_ae=${{ fromJSON(env.BUILD_TYPE).runtime[matrix.runtime].ae }} -o commonlibsse-ng:with_se=${{ fromJSON(env.BUILD_TYPE).runtime[matrix.runtime].se }} -o commonlibsse-ng:with_vr=${{ fromJSON(env.BUILD_TYPE).runtime[matrix.runtime].vr }} .
 
       - name: Build with CMake
         uses: lukka/run-cmake@v10.0
@@ -105,7 +140,6 @@ jobs:
           buildPreset: ${{ matrix.build-type }}-${{ matrix.compiler }}-conan-${{ matrix.runtime }}
 
       - name: Build with Conan
-        if: matrix.compiler == 'msvc' && matrix.runtime == 'all'
         working-directory: ${{ github.workspace }}/main
         run: conan build .
 
@@ -115,6 +149,5 @@ jobs:
         run: .\CommonLibSSETests.exe
 
       - name: Create Conan Package
-        if: matrix.compiler == 'msvc' && matrix.runtime == 'all'
         working-directory: ${{ github.workspace }}/main
-        run: conan create .
+        run: conan create -s build_type=${{ fromJSON(env.BUILD_CONTEXT).build[matrix.build-type] }} -o commonlibsse-ng:with_ae=${{ fromJSON(env.BUILD_TYPE).runtime[matrix.runtime].ae }} -o commonlibsse-ng:with_se=${{ fromJSON(env.BUILD_TYPE).runtime[matrix.runtime].se }} -o commonlibsse-ng:with_vr=${{ fromJSON(env.BUILD_TYPE).runtime[matrix.runtime].vr }} .

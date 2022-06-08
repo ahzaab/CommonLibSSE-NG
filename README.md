@@ -159,9 +159,9 @@ Selective runtime support is handled via package options:
 commonlibsse-ng/3.5.0
 
 [options]
-commonlibsse-ng:ae=True
-commonlibsse-ng:se=True
-commonlibsse-ng:vr=True
+commonlibsse-ng:with_ae=True
+commonlibsse-ng:with_se=True
+commonlibsse-ng:with_vr=True
 ```
 
 The above shows the default values (which includes support for all runtimes). Disable any runtimes you do not want.
