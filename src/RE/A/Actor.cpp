@@ -442,7 +442,10 @@ namespace RE
 		}
 
 		const auto gold = dobj->GetObject<TESObjectMISC>(DefaultObjectID::kGold);
-		const auto it = inv.find(*gold);
+		if (!gold) {
+			return 0;
+		}
+		const auto it = inv.find(gold);
 		return it != inv.end() ? it->second.first : 0;
 	}
 

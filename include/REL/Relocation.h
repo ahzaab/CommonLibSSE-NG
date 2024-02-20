@@ -2150,6 +2150,12 @@ namespace REL {
         return *reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(a_self) + Relocate(a_seAndAE, a_seAndAE, a_vr));
     }
 
+    template <class T, class This>
+	[[nodiscard]] inline T& RelocateMember(This* a_self, std::ptrdiff_t a_se, std::ptrdiff_t a_ae, std::ptrdiff_t a_vr)
+	{
+		return *reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(a_self) + Relocate(a_se, a_ae, a_vr));
+	}
+
 	template<class T, class This>
 	[[nodiscard]] inline T &RelocateMember(This *a_self, std::ptrdiff_t offset) {
 		return *reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(a_self) + offset);

@@ -597,7 +597,7 @@ namespace RE
 			return false;
 		}
 
-		auto keyword = *dobj->GetObject<BGSKeyword>(keywordType);
+		auto keyword = dobj->GetObject<BGSKeyword>(keywordType);
 		return keyword ? HasKeyword(keyword) : false;
 	}
 
@@ -688,7 +688,7 @@ namespace RE
 		}
 
 		auto keyword = dobj->GetObject<BGSKeyword>(DefaultObjectID::kKeywordHorse);
-		return keyword && *keyword ? HasKeyword(*keyword) : false;
+		return keyword ? HasKeyword(keyword) : false;
 	}
 
 	bool TESObjectREFR::IsHumanoid() const

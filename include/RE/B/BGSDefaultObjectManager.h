@@ -6,6 +6,13 @@
 
 namespace RE
 {
+	namespace DefaultObject
+	{
+		constexpr auto kTotalSE = 364;
+		constexpr auto kTotalAE = 367;
+		constexpr auto kTotalVR = 369;
+	}
+
 	struct DEFAULT_OBJECTS
 	{
 		enum DEFAULT_OBJECT
@@ -559,6 +566,7 @@ namespace RE
 			kVRPlayroomQuest = 366,
 			kVRPlayroom = 367,
 			kVRSettingsWarning = 368,
+	}
 
 			kTotal = 369
 #else
@@ -568,8 +576,9 @@ namespace RE
 	};
 	using DEFAULT_OBJECT = DEFAULT_OBJECTS::DEFAULT_OBJECT;
 
-#define MakeDefaultObjectID(se, vr) (se | (vr << 16))
-	enum class DefaultObjectID
+#define MakeDefaultObjectIDAE(se, ae, vr) ((se & 0x3FF) | (ae << 10) | (vr << 20) | 0x80000000)
+#define MakeDefaultObjectID(se, vr) (se | (vr << 20))
+	enum class DefaultObjectID: std::uint32_t
 	{
 		kWerewolfSpell = 0,
 		kSittingAngleLimit = 1,
@@ -935,7 +944,11 @@ namespace RE
 		kKeywordArmorMaterialHeavyStalhrim = MakeDefaultObjectID(360, 360),
 		kKeywordWeaponMaterialNordic = MakeDefaultObjectID(361, 361),
 		kKeywordWeaponMaterialStalhrim = MakeDefaultObjectID(362, 362),
-		kModsHelpFormList = MakeDefaultObjectID(363, 363),
+		kModsHelpFormList = MakeDefaultObjectIDAE(363, 365, 363),
+
+		// AE-specific
+		kHelpManualInstalledContent = MakeDefaultObjectIDAE(0, 363, 0),
+		kHelpManualInstalledContentAE = MakeDefaultObjectIDAE(0,364, 0),
 
 		// VR-specific
 		kisJarlChair = MakeDefaultObjectID(0, 184),
@@ -956,6 +969,7 @@ namespace RE
 		kVRSettingsWarning = MakeDefaultObjectID(0, 368)
 	};
 #undef MakeDefaultObjectID
+#undef MakeDefaultObjectIDAE
 
 	enum class DEFAULT_OBJECT_TYPE
 	{
@@ -990,7 +1004,6 @@ namespace RE
 		inline static constexpr auto RTTI = RTTI_BGSDefaultObjectManager;
 		inline static constexpr auto VTABLE = VTABLE_BGSDefaultObjectManager;
 
-		using DefaultObject = DEFAULT_OBJECT;
 		inline static constexpr auto FORMTYPE = FormType::DefaultObject;
 
 		struct RecordFlags
@@ -1013,39 +1026,13 @@ namespace RE
 			return func();
 		}
 
-		[[nodiscard]] TESForm* GetObject(DefaultObject a_object) const noexcept { return GetObject(stl::to_underlying(a_object)); }
+		[[nodiscard]] TESForm* GetObject(DefaultObjectID a_object) noexcept;
 
 		template <class T>
-		[[nodiscard]] T* GetObject(DefaultObject a_object) const noexcept
-		{
-			return GetObject<T>(stl::to_underlying(a_object));
-		}
-
-		[[nodiscard]] TESForm* GetObject(std::size_t a_idx) const noexcept
-		{
-			assert(a_idx < stl::to_underlying(DefaultObject::kTotal));
-			return IsObjectInitialized(a_idx) ? objects[a_idx] : nullptr;
-		}
-
-		template <class T>
-		[[nodiscard]] T* GetObject(std::size_t a_idx) const noexcept
-		{
-			const auto obj = GetObject(a_idx);
-			return obj ? obj->As<T>() : nullptr;
-		}
-
-		[[nodiscard]] TESForm** GetObject(DefaultObjectID a_object) noexcept;
-
-		template <class T>
-		[[nodiscard]] T** GetObject(DefaultObjectID a_object) noexcept
+		[[nodiscard]] T* GetObject(DefaultObjectID a_object) noexcept
 		{
 			auto obj = GetObject(a_object);
-			return obj && *obj && (*obj)->As<T>() ? reinterpret_cast<T**>(obj) : nullptr;
-		}
-
-		[[nodiscard]] bool IsObjectInitialized(DEFAULT_OBJECT a_object) const noexcept
-		{
-			return IsObjectInitialized(stl::to_underlying(a_object));
+			return obj && obj->As<T>() ? reinterpret_cast<T*>(obj) : nullptr;
 		}
 
 		[[nodiscard]] bool IsObjectInitialized(DefaultObjectID a_object) const noexcept;
@@ -1066,17 +1053,31 @@ namespace RE
 
 		[[nodiscard]] static bool SupportsCurrentRuntime(DefaultObjectID a_object) noexcept;
 
+#if defined(ENABLE_SKYRIM_VR) 
 		// members
-		TESForm* objects[DEFAULT_OBJECTS::kTotal];  // 020 - DNAM
-#ifndef SKYRIM_CROSS_VR
-		bool          objectInit[DEFAULT_OBJECTS::kTotal];  // B80
-		std::uint32_t padCEC;                               // CEC
+		TESForm* objects[DefaultObject::kTotalVR];		// 020 - DNAM
+		bool     objectInit[DefaultObject::kTotalVR];	// BA8
+		std::uint8_t padD19[7];							// D19
+#elif defined(ENABLE_SKYRIM_AE)
+		// members
+		TESForm* objects[DefaultObject::kTotalAE];     // 020 - DNAM
+		bool     objectInit[DefaultObject::kTotalAE];  // B98
+		std::uint8_t padD07							   // D07
 #else
-		std::uint8_t unk5D8[0x718];  // 5D8
+		// members
+		TESForm* objects[DefaultObject::kTotalSE];     // 020 - DNAM
+		bool     objectInit[DefaultObject::kTotalSE];  // B80
+		std::uint32_t padCEC;                          // CEC
 #endif
 	};
-#if !defined(ENABLE_SKYRIM_AE) && !defined(ENABLE_SKYRIM_SE)
+
+// We will go with the largest size possible for each build
+// If the runtime is actully less than the size we need to
+// make sure we don't overrun
+#if defined(ENABLE_SKYRIM_VR)
 	static_assert(sizeof(BGSDefaultObjectManager) == 0xD20);
+#elif defined(ENABLE_SKYRIM_AE)
+	static_assert(sizeof(BGSDefaultObjectManager) == 0xD08);
 #else
 	static_assert(sizeof(BGSDefaultObjectManager) == 0xCF0);
 #endif
