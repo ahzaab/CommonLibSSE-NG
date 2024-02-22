@@ -8,9 +8,9 @@ namespace RE
 {
 	namespace DefaultObject
 	{
-		constexpr auto kTotalSE = 364;
-		constexpr auto kTotalAE = 367;
-		constexpr auto kTotalVR = 369;
+		constexpr auto kTotalSE = 364u;
+		constexpr auto kTotalAE = 366u;
+		constexpr auto kTotalVR = 369u;
 	}
 
 	struct DEFAULT_OBJECTS
@@ -381,9 +381,15 @@ namespace RE
 			kKeywordArmorMaterialHeavyStalhrim = 360,
 			kKeywordWeaponMaterialNordic = 361,
 			kKeywordWeaponMaterialStalhrim = 362,
+#ifdef ENABLE_SKYRIM_AE
+			kHelpManualInstalledContent = 363,
+			kHelpManualInstalledContentAE = 364,
+			kModsHelpFormList = 365,
+			kTotal = 366
+#else
 			kModsHelpFormList = 363,
-
 			kTotal = 364
+#endif
 #elif !defined(ENABLE_SKYRIM_AE) && !defined(ENABLE_SKYRIM_SE)
 			kisJarlChair = 184,
 			kFurnitureAnimatesFast = 185,
@@ -566,17 +572,13 @@ namespace RE
 			kVRPlayroomQuest = 366,
 			kVRPlayroom = 367,
 			kVRSettingsWarning = 368,
-	}
-
 			kTotal = 369
-#else
-			kTotal = 183
 #endif
 		};
 	};
 	using DEFAULT_OBJECT = DEFAULT_OBJECTS::DEFAULT_OBJECT;
 
-#define MakeDefaultObjectIDAE(se, ae, vr) ((se & 0x3FF) | (ae << 10) | (vr << 20) | 0x80000000)
+#define MakeDefaultObjectIDAE(se, ae, vr) ((se & 0x3FF) | (ae << 10) | (vr << 20))
 #define MakeDefaultObjectID(se, vr) (se | (vr << 20))
 	enum class DefaultObjectID: std::uint32_t
 	{
@@ -948,7 +950,7 @@ namespace RE
 
 		// AE-specific
 		kHelpManualInstalledContent = MakeDefaultObjectIDAE(0, 363, 0),
-		kHelpManualInstalledContentAE = MakeDefaultObjectIDAE(0,364, 0),
+		kHelpManualInstalledContentAE = MakeDefaultObjectIDAE(0, 364, 0),
 
 		// VR-specific
 		kisJarlChair = MakeDefaultObjectID(0, 184),
@@ -1037,19 +1039,11 @@ namespace RE
 
 		[[nodiscard]] bool IsObjectInitialized(DefaultObjectID a_object) const noexcept;
 
-		[[nodiscard]] bool IsObjectInitialized(std::size_t a_idx) const noexcept
-		{
-			return REL::RelocateMember<bool*>(this, 0xB80, 0xBA8)[a_idx];
-		}
-
 		[[nodiscard]] static bool SupportsVR(DefaultObjectID a_object) noexcept;
 
 		[[nodiscard]] static bool SupportsSE(DefaultObjectID a_object) noexcept;
 
-		[[nodiscard]] static inline bool SupportsAE(DefaultObjectID a_object) noexcept
-		{
-			return SupportsSE(a_object);
-		}
+		[[nodiscard]] static bool SupportsAE(DefaultObjectID a_object) noexcept;
 
 		[[nodiscard]] static bool SupportsCurrentRuntime(DefaultObjectID a_object) noexcept;
 
@@ -1060,14 +1054,14 @@ namespace RE
 		std::uint8_t padD19[7];							// D19
 #elif defined(ENABLE_SKYRIM_AE)
 		// members
-		TESForm* objects[DefaultObject::kTotalAE];     // 020 - DNAM
-		bool     objectInit[DefaultObject::kTotalAE];  // B98
-		std::uint8_t padD07							   // D07
+		TESForm* objects[DefaultObject::kTotalAE];		// 020 - DNAM
+		bool     objectInit[DefaultObject::kTotalAE];	// B90
+		std::uint8_t padCFE[2];							// CFE
 #else
 		// members
-		TESForm* objects[DefaultObject::kTotalSE];     // 020 - DNAM
-		bool     objectInit[DefaultObject::kTotalSE];  // B80
-		std::uint32_t padCEC;                          // CEC
+		TESForm* objects[DefaultObject::kTotalSE];		// 020 - DNAM
+		bool     objectInit[DefaultObject::kTotalSE];	// B80
+		std::uint32_t padCEC;							// CEC
 #endif
 	};
 
@@ -1077,7 +1071,7 @@ namespace RE
 #if defined(ENABLE_SKYRIM_VR)
 	static_assert(sizeof(BGSDefaultObjectManager) == 0xD20);
 #elif defined(ENABLE_SKYRIM_AE)
-	static_assert(sizeof(BGSDefaultObjectManager) == 0xD08);
+	static_assert(sizeof(BGSDefaultObjectManager) == 0xD00);
 #else
 	static_assert(sizeof(BGSDefaultObjectManager) == 0xCF0);
 #endif

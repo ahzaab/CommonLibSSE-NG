@@ -15,41 +15,65 @@ namespace RE
 			}
 
 			// We split up like this:
-			// VR-AE-SE each place occupies 10 bits
-			// The MSB indicates that the data is exclusively
-			// AE data, otherwise tbe values are the same as SE
+			// VR-AE-SE, where each place occupies 10 bits
 
 			std::size_t result;
 			if SKYRIM_REL_CONSTEXPR (Module::IsVR()) {
 				result = (0x3FF00000 & a_idx) >> 20;
+				if (result >= DefaultObject::kTotalVR) {
+					return kInvalid;
+				}
 			} else if SKYRIM_REL_CONSTEXPR (Module::IsAE()) {
-				if (a_idx & 0x80000000) {
+				if (0x000FFC00 & a_idx) {
 					result = (0x000FFC00 & a_idx) >> 10;
 				} else {
 					result = (0x00003FF & a_idx);
 				}
+				if (result >= DefaultObject::kTotalAE) {
+					return kInvalid;
+				}
 			} else {
 				result = (0x00003FF & a_idx);
+				if (result >= DefaultObject::kTotalSE) {
+					return kInvalid;
+				}
 			}
+
 			return result ? result : kInvalid;
 		}
 	}
 
 	TESForm* BGSDefaultObjectManager::GetObject(DefaultObjectID a_object) noexcept
 	{
-		assert(stl::to_underlying(a_object) < Relocate(364u, 364u, 369u));
 		auto idx = MapIndex(stl::to_underlying(a_object));
+		assert(idx != kInvalid);
 		if (idx == kInvalid) {
 			return nullptr;
 		}
-		return RelocateMember<bool*>(this, 0xB80u, 0xB98u, 0xBA8u)[idx] ?
-                   RelocateMember<TESForm**>(this, 0x20, 0x20)[idx] :
-                   nullptr;
+		if (!IsObjectInitialized(a_object))
+		{
+			return nullptr;
+		}
+		
+		auto* objectsxx = &RelocateMember<TESForm*>(this, 0x20, 0x20);
+
+		if (!objectsxx) {
+			return nullptr;
+		}
+
+		return objectsxx[idx];
 	}
 
 	bool BGSDefaultObjectManager::IsObjectInitialized(DefaultObjectID a_object) const noexcept
 	{
-		return IsObjectInitialized(MapIndex(stl::to_underlying(a_object)));
+		auto idx = MapIndex(stl::to_underlying(a_object));
+		assert(idx != kInvalid);
+		if (idx == kInvalid) {
+			return false;
+		}
+		
+		const auto* objectInitxx = &RelocateMember<bool>(this, 0xB80, 0xB90, 0xBA8);
+		return objectInitxx[idx];
 	}
 
 	bool BGSDefaultObjectManager::SupportsVR(DefaultObjectID a_object) noexcept
@@ -60,7 +84,13 @@ namespace RE
 
 	bool BGSDefaultObjectManager::SupportsSE(DefaultObjectID a_object) noexcept
 	{
-		return (stl::to_underlying(a_object) & 0x000003FF) || a_object != DefaultObjectID::kWerewolfSpell;
+		return ((stl::to_underlying(a_object) & 0x000003FF) || a_object == DefaultObjectID::kWerewolfSpell);
+	}
+
+	bool BGSDefaultObjectManager::SupportsAE(DefaultObjectID a_object) noexcept
+	{
+		auto idx = stl::to_underlying(a_object);
+		return (idx <= stl::to_underlying(DefaultObjectID::kKeywordWeaponMaterialStalhrim) || (idx & 0x000FFC00) || a_object == DefaultObjectID::kWerewolfSpell);
 	}
 
 	bool BGSDefaultObjectManager::SupportsCurrentRuntime(DefaultObjectID a_object) noexcept
