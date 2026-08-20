@@ -286,6 +286,9 @@ namespace RE
 		RUNTIME_DATA_ACCESSOR_EX(RUNTIME_DATA2, GetRuntimeData2, 0x760, 0x780);
 		static SkyrimVM* GetSingleton();
 
+		[[nodiscard]] BSTSmartPointer<BSScript::IVirtualMachine>& GetImpl() noexcept;
+		[[nodiscard]] const BSTSmartPointer<BSScript::IVirtualMachine>& GetImpl() const noexcept;
+
 		bool QueuePostRenderCall(const BSTSmartPointer<SkyrimScript::DelayFunctor>& a_functor);
 		void RelayEvent(VMHandle handle, BSFixedString* event, BSScript::IFunctionArguments* args, ISendEventFilter* optionalFilter);
 		void SendAndRelayEvent(VMHandle handle, BSFixedString* event, BSScript::IFunctionArguments* args, ISendEventFilter* optionalFilter);

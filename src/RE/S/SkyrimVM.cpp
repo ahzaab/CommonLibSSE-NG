@@ -9,6 +9,18 @@ namespace RE
 		return *singleton;
 	}
 
+	BSTSmartPointer<BSScript::IVirtualMachine>& SkyrimVM::GetImpl() noexcept
+	{
+		const auto offset = REL::Module::IsAE() && REL::Module::get().version() >= SKSE::RUNTIME_SSE_1_7_99 ? 0x210 : 0x200;
+		return REL::RelocateMember<BSTSmartPointer<BSScript::IVirtualMachine>>(this, offset);
+	}
+
+	const BSTSmartPointer<BSScript::IVirtualMachine>& SkyrimVM::GetImpl() const noexcept
+	{
+		const auto offset = REL::Module::IsAE() && REL::Module::get().version() >= SKSE::RUNTIME_SSE_1_7_99 ? 0x210 : 0x200;
+		return REL::RelocateMember<const BSTSmartPointer<BSScript::IVirtualMachine>>(this, offset);
+	}
+
 	bool SkyrimVM::QueuePostRenderCall(const BSTSmartPointer<SkyrimScript::DelayFunctor>& a_functor)
 	{
 		using func_t = decltype(&SkyrimVM::QueuePostRenderCall);
@@ -27,7 +39,7 @@ namespace RE
 	// Sends event to handle directly, then relays event to all reference aliases and magic effects attached to reference
 	void SkyrimVM::SendAndRelayEvent(VMHandle a_handle, BSFixedString* a_event, BSScript::IFunctionArguments* a_args, SkyrimVM::ISendEventFilter* a_optionalFilter)
 	{
-		impl.get()->SendEvent(a_handle, *a_event, a_args);
+		GetImpl().get()->SendEvent(a_handle, *a_event, a_args);
 		RelayEvent(a_handle, a_event, a_args, a_optionalFilter);
 	}
 
