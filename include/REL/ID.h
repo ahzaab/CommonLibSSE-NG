@@ -271,29 +271,43 @@ namespace REL
 				}
 
 				std::int32_t version[4]{};
-				std::int32_t nameLen{};
 				a_in.readin(version);
-				a_in.readin(nameLen);
-				a_in.ignore(nameLen);
+				if (format == 5) {
+					constexpr std::streamsize nameLength = 64;
+					a_in.ignore(nameLength);
+					a_in.readin(_pointerSize);
+					a_in.readin(_addressCount);
+				} else {
+					std::int32_t nameLength{};
+					a_in.readin(nameLength);
+					a_in.ignore(nameLength);
 
-				a_in.readin(_pointerSize);
-				a_in.readin(_addressCount);
+					std::int32_t pointerSize{};
+					std::int32_t addressCount{};
+					a_in.readin(pointerSize);
+					a_in.readin(addressCount);
+					_pointerSize = static_cast<std::uint64_t>(pointerSize);
+					_addressCount = static_cast<std::uint32_t>(addressCount);
+				}
 
 				for (std::size_t i = 0; i < std::extent_v<decltype(version)>; ++i) {
 					_version[i] = static_cast<std::uint16_t>(version[i]);
 				}
+				_format = format;
 			}
 
-			[[nodiscard]] std::size_t address_count() const noexcept { return static_cast<std::size_t>(_addressCount); }
+			[[nodiscard]] std::int32_t format() const noexcept { return _format; }
+			[[nodiscard]] std::size_t  address_count() const noexcept { return static_cast<std::size_t>(_addressCount); }
 
 			[[nodiscard]] std::uint64_t pointer_size() const noexcept { return static_cast<std::uint64_t>(_pointerSize); }
 
 			[[nodiscard]] Version version() const noexcept { return _version; }
 
 		private:
-			Version      _version;
-			std::int32_t _pointerSize{ 0 };
-			std::int32_t _addressCount{ 0 };
+			Version       _version;
+			std::int32_t  _format{ 0 };
+			std::uint64_t _pointerSize{ 0 };
+			std::uint32_t _addressCount{ 0 };
 		};
 
 		IDDatabase() = default;
@@ -323,7 +337,8 @@ namespace REL
 							std::format("Data/SKSE/Plugins/versionlib-{}.bin"sv, version.string()) :
 							std::format("Data/SKSE/Plugins/version-{}.bin"sv, version.string()))
 						.value_or(L"<unknown filename>"s);
-				load_file(filename, version, Module::IsAE() ? 2 : 1, true);
+				const auto format = Module::IsAE() ? (version.minor() >= 7 ? 5 : 2) : 1;
+				load_file(filename, version, format, true);
 #ifdef ENABLE_SKYRIM_VR
 			}
 #endif
@@ -337,6 +352,14 @@ namespace REL
 
 		bool unpack_file(istream_t& a_in, header_t a_header, bool a_failOnError)
 		{
+			if (a_header.format() == 5) {
+				std::uint64_t id = 0;
+				for (auto& mapping : _id2offset) {
+					mapping = { id++, a_in.readout<std::uint32_t>() };
+				}
+				return true;
+			}
+
 			std::uint8_t  type = 0;
 			std::uint64_t id = 0;
 			std::uint64_t offset = 0;
