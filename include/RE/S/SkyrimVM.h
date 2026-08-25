@@ -388,6 +388,8 @@ namespace RE
 		// (see BSScript::IFreezeQuery) or a timeout.
 		void Freeze();
 
+		RUNTIME_MEMBER_ACCESSOR_VERSIONED(BSTSmartPointer<BSScript::IVirtualMachine>, GetImpl, SKSE::RUNTIME_SSE_1_7_99, 0x200, 0x200, 0x210);
+
 		// members
 		BSTSmartPointer<BSScript::IVirtualMachine> impl;               // 0200
 		BSScript::IVMSaveLoadInterface*            saveLoadInterface;  // 0208
